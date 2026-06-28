@@ -1,0 +1,9 @@
+myenv/
+.env
+__pycache__/
+*pycache__/
+dbsqlite3
+*.sqlite3
+dist/
+*.egg-info/
+vscode/
