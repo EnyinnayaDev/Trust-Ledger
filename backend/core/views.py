@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, permissions, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework import viewsets, permissions
 from .models import Trader, Lender, Transaction, Vouch, LoanOutcome, FraudFlag
@@ -9,7 +10,7 @@ from .scoring import calculate_trust_score
 from .permissions import IsOwnerTrader, IsOwnerTransaction, IsOwnerVouch, IsOwnerLoanOutcome
 from .serializers import (
     TraderSerializer, LenderSerializer, TransactionSerializer,
-    VouchSerializer, LoanOutcomeSerializer, FraudFlagSerializer
+    VouchSerializer, LoanOutcomeSerializer, FraudFlagSerializer, UserSignupSerializer
 )
 
 # Create your views here.
@@ -90,8 +91,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_staff:
-            return Transaction.objects.all()
-        return Transaction.objects.filter(trader__user=user)
+            queryset = Transaction.objects.all()
+        else:
+            queryset = Transaction.objects.filter(trader__user=user)
+
+        # Filter by ?trader=me
+        trader_param = self.request.query_params.get('trader', None)
+        if trader_param == 'me':
+            try:
+                trader = Trader.objects.get(user=user)
+                queryset = queryset.filter(trader=trader)
+            except Trader.DoesNotExist:
+                return Transaction.objects.none()
+        return queryset
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy']:
@@ -173,3 +185,79 @@ class FraudFlagViewSet(viewsets.ModelViewSet):
     serializer_class = FraudFlagSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+
+class SignupView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = UserSignupSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Account created successfully."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class AdminTraderViewSet(viewsets.ModelViewSet):
+    """Admin only — full trader management including bulk onboarding."""
+    queryset = Trader.objects.all()
+    serializer_class = TraderSerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    @action(detail=False, methods=['post'])
+    def bulk_upload(self, request):
+        import csv
+        import io
+        from django.contrib.auth.models import User
+
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "No file provided. Upload a CSV file."}, status=status.HTTP_400_BAD_REQUEST)
+
+        decoded = file.read().decode('utf-8')
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        created = []
+        errors = []
+
+        for i, row in enumerate(reader, start=1):
+            try:
+                user = User.objects.create_user(
+                    username=row['username'],
+                    email=row.get('email', ''),
+                    password=row.get('password', 'changeme123')
+                )
+                Trader.objects.create(
+                    user=user,
+                    phone_number=row['phone_number'],
+                    market_name=row['market_name'],
+                    state=row['state'],
+                )
+                created.append(row['username'])
+            except Exception as e:
+                errors.append({"row": i, "error": str(e)})
+
+        return Response({
+            "created": created,
+            "errors": errors,
+            "summary": f"{len(created)} traders created, {len(errors)} failed."
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminLenderViewSet(viewsets.ViewSet):
+    """Admin only — lender verification management."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def list(self, request):
+        pending = Lender.objects.filter(is_verified=False)
+        serializer = LenderSerializer(pending, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def verify(self, request, pk=None):
+        try:
+            lender = Lender.objects.get(pk=pk)
+        except Lender.DoesNotExist:
+            return Response({"error": "Lender not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        lender.is_verified = True
+        lender.save(update_fields=['is_verified'])
+        return Response({"message": f"{lender.institution_name} has been verified."})
