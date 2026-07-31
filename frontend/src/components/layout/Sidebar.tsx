@@ -73,8 +73,8 @@ export function Sidebar() {
 
       <div className="border-t px-3 py-4">
         <div className="mb-3 px-3">
-          <p className="text-sm font-medium">{user.full_name}</p>
-          <p className="text-xs text-muted-foreground">{user.email}</p>
+          <p className="text-sm font-medium">{user.username}</p>
+          <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
         </div>
         <Button variant="ghost" className="w-full justify-start gap-3" onClick={logout}>
           <SignOut className="h-5 w-5" />

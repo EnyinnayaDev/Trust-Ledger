@@ -76,6 +76,10 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+
+  getTraders: () => apiCall<TraderProfile[]>("/traders/"),
+  getLenders: () => apiCall<Lender[]>("/lenders/"),
+  getLoanOutcomes: () => apiCall<LoanOutcome[]>("/loan-outcomes/"),
   // Auth
   login: async (username: string, password: string) => {
     const data = await apiCall<{ access: string; refresh: string }>("/token/", {
