@@ -6,7 +6,7 @@ export const setToken = (token: string) => localStorage.setItem("trustledger_acc
 export const clearToken = () => localStorage.removeItem("trustledger_access_token");
 
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
+  let token = getToken();
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -16,6 +16,56 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
       ...options?.headers,
     },
   });
+
+  // If token expired, try to refresh it
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem("trustledger_refresh_token");
+    if (refreshToken) {
+      try {
+        const refreshResponse = await fetch(`${API_BASE}/token/refresh/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh: refreshToken }),
+        });
+
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          setToken(data.access);
+          token = data.access;
+
+          // Retry original request with new token
+          const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              ...options?.headers,
+            },
+          });
+
+          if (!retryResponse.ok) {
+            const error = await retryResponse.json().catch(() => ({ detail: "Request failed" }));
+            throw new Error(error.detail || error.error || `HTTP ${retryResponse.status}`);
+          }
+
+          return retryResponse.json();
+        }
+      } catch {
+        // Refresh failed — clear everything and redirect to login
+        localStorage.removeItem("trustledger_access_token");
+        localStorage.removeItem("trustledger_refresh_token");
+        localStorage.removeItem("trustledger_user");
+        window.location.href = "/login";
+        throw new Error("Session expired. Please log in again.");
+      }
+    } else {
+      // No refresh token — redirect to login
+      localStorage.removeItem("trustledger_access_token");
+      localStorage.removeItem("trustledger_user");
+      window.location.href = "/login";
+      throw new Error("Session expired. Please log in again.");
+    }
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Request failed" }));
