@@ -123,10 +123,6 @@ export function TraderProfile() {
               <span className="text-sm text-muted-foreground">Market Name</span>
               <span className="text-lg font-semibold">{profile.market_name}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Transactions</span>
-              <span className="text-lg font-semibold">{profile.score_breakdown}</span>
-            </div>
             
           </CardContent>
         </Card>
