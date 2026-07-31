@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { LenderProfile } from "@/lib/types";
+import type { Lender } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 
 export function AdminLenders() {
-  const [lenders, setLenders] = useState<LenderProfile[]>([]);
+  const [lenders, setLenders] = useState<Lender[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -27,9 +27,13 @@ export function AdminLenders() {
     }
   };
 
-  const filtered = lenders.filter(l =>
-    l.business_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = lenders.filter(l => {
+    const term = search.toLowerCase();
+    return (
+      l.institution_name.toLowerCase().includes(term) ||
+      String(l.user).includes(term)
+    );
+  });
 
   if (loading) {
     return <div className="flex items-center justify-center py-12">Loading...</div>;
@@ -70,28 +74,20 @@ export function AdminLenders() {
               >
                 <Card className="hover:shadow-md transition-shadow">
                   <CardHeader>
-                    <CardTitle className="text-base">{lender.business_name}</CardTitle>
-                    <CardDescription>Lending Platform</CardDescription>
+                    <CardTitle className="text-base">{lender.institution_name}</CardTitle>
+                    <CardDescription>User #{lender.user}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Total Lent</span>
+                        <span className="text-sm text-muted-foreground">Verified</span>
                         <Badge variant="outline" className="text-base font-bold">
-                          ${lender.total_lent.toLocaleString()}
+                          {lender.is_verified ? "Yes" : "No"}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Active Loans</span>
-                        <span className="text-sm font-medium">{lender.active_loans}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Default Rate</span>
-                        <span className="text-sm font-medium">{lender.default_rate}%</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Avg Loan</span>
-                        <span className="text-sm font-medium">${lender.avg_loan_size.toLocaleString()}</span>
+                        <span className="text-sm text-muted-foreground">Joined</span>
+                        <span className="text-sm font-medium">{new Date(lender.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </CardContent>

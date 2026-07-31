@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { TraderProfile } from "@/lib/types";
+import type { TraderProfile } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,14 @@ export function AdminTraders() {
     }
   };
 
-  const filtered = traders.filter(t =>
-    t.full_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = traders.filter(t => {
+    const term = search.toLowerCase();
+    return (
+      t.market_name.toLowerCase().includes(term) ||
+      t.state.toLowerCase().includes(term) ||
+      t.phone_number.toLowerCase().includes(term)
+    );
+  });
 
   const getTrustBadge = (score: number) => {
     if (score >= 80) return { icon: ShieldCheck, color: "text-green-600", bg: "bg-green-100" };
@@ -81,8 +86,8 @@ export function AdminTraders() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="text-base">{trader.full_name}</CardTitle>
-                          <CardDescription>{trader.phone}</CardDescription>
+                            <CardTitle className="text-base">{trader.market_name}</CardTitle>
+                            <CardDescription>{trader.phone_number}</CardDescription>
                         </div>
                         <div className={`rounded-full p-2 ${badge.bg}`}>
                           <Icon className={`h-5 w-5 ${badge.color}`} weight="fill" />
@@ -98,16 +103,16 @@ export function AdminTraders() {
                           </Badge>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Vouches</span>
-                          <span className="text-sm font-medium">{trader.vouch_count}</span>
+                            <span className="text-sm text-muted-foreground">State</span>
+                            <span className="text-sm font-medium">{trader.state}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Transactions</span>
-                          <span className="text-sm font-medium">{trader.total_transactions}</span>
+                            <span className="text-sm text-muted-foreground">Joined</span>
+                            <span className="text-sm font-medium">{new Date(trader.created_at).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Fraud Flags</span>
-                          <span className="text-sm font-medium">{trader.fraud_flags}</span>
+                            <span className="text-sm text-muted-foreground">User ID</span>
+                            <span className="text-sm font-medium">{trader.user}</span>
                         </div>
                       </div>
                     </CardContent>

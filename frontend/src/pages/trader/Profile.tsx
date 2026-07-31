@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
-import type { TraderProfile } from "@/lib/types";
+import type { TraderProfile } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export function TraderProfile() {
   const [profile, setProfile] = useState<TraderProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [formData, setFormData] = useState({ full_name: "", phone: "" });
+  const [formData, setFormData] = useState({ market_name: "", phone_number: "" });
 
   useEffect(() => {
     loadProfile();
@@ -23,10 +23,10 @@ export function TraderProfile() {
   const loadProfile = async () => {
     try {
       const traders = await api.getTraders();
-      const myProfile = traders.find(t => t.user_id === user?.id);
+      const myProfile = traders.find(t => t.user === user?.id);
       const p = myProfile || traders[0];
       setProfile(p);
-      setFormData({ full_name: p.full_name, phone: p.phone });
+      setFormData({ market_name: p.market_name, phone_number: p.phone_number });
     } catch (error) {
       console.error("Failed to load profile:", error);
     } finally {
@@ -73,25 +73,25 @@ export function TraderProfile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Full Name</Label>
+              <Label>Market Name</Label>
               {editing ? (
                 <Input
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  value={formData.market_name}
+                  onChange={(e) => setFormData({ ...formData, market_name: e.target.value })}
                 />
               ) : (
-                <p className="text-sm">{profile.full_name}</p>
+                <p className="text-sm">{profile.market_name}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label>Phone Number</Label>
               {editing ? (
                 <Input
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  value={formData.phone_number}
+                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
                 />
               ) : (
-                <p className="text-sm">{profile.phone}</p>
+                <p className="text-sm">{profile.phone_number}</p>
               )}
             </div>
             <div className="space-y-2">

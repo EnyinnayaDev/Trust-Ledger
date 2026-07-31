@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
-import type { LenderProfile } from "@/lib/types";
+import type { Lender } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 export function LenderProfile() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<LenderProfile | null>(null);
+  const [profile, setProfile] = useState<Lender | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({ business_name: "" });
@@ -23,10 +23,10 @@ export function LenderProfile() {
   const loadProfile = async () => {
     try {
       const lenders = await api.getLenders();
-      const myProfile = lenders.find(l => l.user_id === user?.id);
+      const myProfile = lenders.find(l => l.user === user?.id);
       const p = myProfile || lenders[0];
       setProfile(p);
-      setFormData({ business_name: p.business_name });
+      setFormData({ business_name: p.institution_name });
     } catch (error) {
       console.error("Failed to load profile:", error);
     } finally {
@@ -80,12 +80,12 @@ export function LenderProfile() {
                   onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
                 />
               ) : (
-                <p className="text-sm">{profile.business_name}</p>
+                <p className="text-sm">{profile.institution_name}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <p className="text-sm">{user?.email}</p>
+              <p className="text-sm">{user?.username}</p>
             </div>
             {editing && (
               <div className="flex gap-2 pt-2">
@@ -103,24 +103,6 @@ export function LenderProfile() {
             <CardTitle>Lending Metrics</CardTitle>
             <CardDescription>Your portfolio performance</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total Lent</span>
-              <span className="text-lg font-bold">${profile.total_lent.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Active Loans</span>
-              <span className="text-lg font-semibold">{profile.active_loans}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Default Rate</span>
-              <span className="text-lg font-semibold">{profile.default_rate}%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Avg Loan Size</span>
-              <span className="text-lg font-semibold">${profile.avg_loan_size.toLocaleString()}</span>
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>
