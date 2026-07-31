@@ -1,112 +1,181 @@
-import type { User, TraderProfile, LenderProfile, Transaction, Vouch, FraudFlag } from "./types";
-import { mockUsers, mockTraders, mockLenders, mockTransactions, mockVouches, mockFraudFlags } from "./mock-data";
-
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://trust-ledger.onrender.com/api";
 
-let useMockMode = localStorage.getItem("trustledger_mock_mode") !== "false";
-
-export const setMockMode = (enabled: boolean) => {
-  useMockMode = enabled;
-  localStorage.setItem("trustledger_mock_mode", String(enabled));
-};
-
-export const isMockMode = () => useMockMode;
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Token management
+export const getToken = () => localStorage.getItem("trustledger_access_token");
+export const setToken = (token: string) => localStorage.setItem("trustledger_access_token", token);
+export const clearToken = () => localStorage.removeItem("trustledger_access_token");
 
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  if (useMockMode) {
-    await delay(300 + Math.random() * 400);
-    return handleMockEndpoint<T>(endpoint);
+  const token = getToken();
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(error.detail || error.error || `HTTP ${response.status}`);
   }
 
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.warn("API call failed, falling back to mock mode:", error);
-    setMockMode(true);
-    await delay(300);
-    return handleMockEndpoint<T>(endpoint);
-  }
-}
-
-function handleMockEndpoint<T>(endpoint: string): T {
-  if (endpoint === "/auth/login") {
-    return mockUsers[0] as T;
-  }
-  if (endpoint === "/traders") {
-    return mockTraders as T;
-  }
-  if (endpoint === "/lenders") {
-    return mockLenders as T;
-  }
-  if (endpoint === "/transactions") {
-    return mockTransactions as T;
-  }
-  if (endpoint === "/vouches") {
-    return mockVouches as T;
-  }
-  if (endpoint === "/fraud-flags") {
-    return mockFraudFlags as T;
-  }
-  if (endpoint.startsWith("/traders/")) {
-    const id = endpoint.split("/")[2];
-    return mockTraders.find(t => t.id === id) as T;
-  }
-  if (endpoint.startsWith("/lenders/")) {
-    const id = endpoint.split("/")[2];
-    return mockLenders.find(l => l.id === id) as T;
-  }
-  throw new Error(`Mock endpoint not found: ${endpoint}`);
+  return response.json();
 }
 
 export const api = {
-  login: (username: string, _password: string) =>
-    apiCall<User>("/auth/login", {
+  // Auth
+  login: async (username: string, password: string) => {
+    const data = await apiCall<{ access: string; refresh: string }>("/token/", {
       method: "POST",
-      body: JSON.stringify({ username, password: _password }),
+      body: JSON.stringify({ username, password }),
+    });
+    setToken(data.access);
+    localStorage.setItem("trustledger_refresh_token", data.refresh);
+    return data;
+  },
+
+  signup: (payload: {
+    username: string;
+    email: string;
+    password: string;
+    role: "trader" | "lender";
+    phone_number?: string;
+    market_name?: string;
+    state?: string;
+    institution_name?: string;
+  }) =>
+    apiCall<{ message: string }>("/auth/signup/", {
+      method: "POST",
+      body: JSON.stringify(payload),
     }),
 
-  getTraders: () => apiCall<TraderProfile[]>("/traders"),
-  getTrader: (id: string) => apiCall<TraderProfile>(`/traders/${id}`),
+  // Trader
+  getMyProfile: () => apiCall<TraderProfile>("/traders/me/"),
+  getMyScore: () => apiCall<ScoreBreakdown>("/traders/me/"),
+  searchTraders: (q: string) => apiCall<TraderProfile[]>(`/traders/search/?q=${q}`),
+  getTraderScore: (id: number) => apiCall<ScoreBreakdown>(`/traders/${id}/score/`),
 
-  getLenders: () => apiCall<LenderProfile[]>("/lenders"),
-  getLender: (id: string) => apiCall<LenderProfile>(`/lenders/${id}`),
-
-  getTransactions: () => apiCall<Transaction[]>("/transactions"),
-
-  getVouches: () => apiCall<Vouch[]>("/vouches"),
-
-  getFraudFlags: () => apiCall<FraudFlag[]>("/fraud-flags"),
-
-  createTransaction: (data: Partial<Transaction>) =>
-    apiCall<Transaction>("/transactions", {
+  // Transactions
+  getTransactions: () => apiCall<Transaction[]>("/transactions/"),
+  createTransaction: (data: {
+    transaction_type: "sale" | "expense" | "debt";
+    amount: number;
+    date: string;
+    note?: string;
+  }) =>
+    apiCall<Transaction>("/transactions/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  createVouch: (data: Partial<Vouch>) =>
-    apiCall<Vouch>("/vouches", {
+  // Vouches
+  getMyNetwork: () => apiCall<VouchNetwork>("/vouches/my_network/"),
+  createVouch: (vouchee: number) =>
+    apiCall<Vouch>("/vouches/", {
+      method: "POST",
+      body: JSON.stringify({ vouchee }),
+    }),
+
+  // Loan outcomes
+  reportLoanOutcome: (data: {
+    trader: number;
+    amount: number;
+    outcome: "repaid" | "defaulted" | "late";
+  }) =>
+    apiCall<LoanOutcome>("/loan-outcomes/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  updateFraudFlag: (id: string, status: FraudFlag["status"]) =>
-    apiCall<FraudFlag>(`/fraud-flags/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
+  // Admin
+  getPendingLenders: () => apiCall<Lender[]>("/admin/lenders/"),
+  verifyLender: (id: number) =>
+    apiCall<{ message: string }>(`/admin/lenders/${id}/verify/`, {
+      method: "POST",
     }),
+  getFraudFlags: () => apiCall<FraudFlag[]>("/fraud-flags/"),
+  getAdminTraders: () => apiCall<TraderProfile[]>("/admin/traders/"),
 };
+
+// Types
+export interface TraderProfile {
+  id: number;
+  user: number;
+  phone_number: string;
+  market_name: string;
+  state: string;
+  trust_score: number;
+  created_at: string;
+  score_breakdown?: ScoreBreakdown;
+}
+
+export interface ScoreBreakdown {
+  transaction_consistency: number;
+  income_trend: number;
+  vouch_network: {
+    score_contribution: number;
+    voucher_count: number;
+    avg_voucher_score: number;
+  };
+  loan_history: {
+    repaid: number;
+    late: number;
+    defaulted: number;
+    score_contribution: number;
+  };
+  fraud_flags: {
+    unresolved_count: number;
+    penalty: number;
+  };
+  final_score: number;
+}
+
+export interface Transaction {
+  id: number;
+  trader: number;
+  transaction_type: "sale" | "expense" | "debt";
+  amount: string;
+  note: string;
+  date: string;
+  created_at: string;
+}
+
+export interface Vouch {
+  id: number;
+  voucher: number;
+  vouchee: number;
+  created_at: string;
+}
+
+export interface VouchNetwork {
+  vouches_received: Vouch[];
+  vouches_given: Vouch[];
+}
+
+export interface Lender {
+  id: number;
+  user: number;
+  institution_name: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
+export interface LoanOutcome {
+  id: number;
+  trader: number;
+  lender: number;
+  amount: string;
+  outcome: "repaid" | "defaulted" | "late";
+  reported_at: string;
+}
+
+export interface FraudFlag {
+  id: number;
+  trader: number;
+  reason: string;
+  flagged_at: string;
+  resolved: boolean;
+}

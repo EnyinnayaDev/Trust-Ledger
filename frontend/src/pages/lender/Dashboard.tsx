@@ -1,170 +1,99 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/lib/api";
-import type { LenderProfile, Transaction, TraderProfile } from "@/lib/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CurrencyDollar, Users, TrendUp, Warning } from "@phosphor-icons/react";
-import { motion } from "framer-motion";
+import { api, type TraderProfile } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
 export function LenderDashboard() {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<LenderProfile | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [traders, setTraders] = useState<TraderProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recentSearches, setRecentSearches] = useState<TraderProfile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setLoading(true);
     try {
-      const [lenders, txs, trds] = await Promise.all([
-        api.getLenders(),
-        api.getTransactions(),
-        api.getTraders(),
-      ]);
-
-      const myProfile = lenders.find(l => l.user_id === user?.id);
-      setProfile(myProfile || lenders[0]);
-      setTransactions(txs.filter(tx => tx.lender_id === (myProfile?.id || lenders[0]?.id)));
-      setTraders(trds);
-    } catch (error) {
-      console.error("Failed to load data:", error);
+      const results = await api.searchTraders(query);
+      setRecentSearches(results);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Search failed");
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-12">Loading...</div>;
-  }
+  const scoreColor = (score: number) =>
+    score >= 700 ? "text-green-600" : score >= 550 ? "text-yellow-600" : "text-red-600";
 
-  if (!profile) {
-    return <div className="flex items-center justify-center py-12">No profile found</div>;
-  }
-
-  const activeLoans = transactions.filter(tx => tx.status === "pending");
-  const defaultedLoans = transactions.filter(tx => tx.status === "defaulted");
+  const scoreLabel = (score: number) =>
+    score >= 700 ? "Low Risk" : score >= 550 ? "Medium Risk" : "High Risk";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{profile.business_name}</h1>
-        <p className="text-muted-foreground">Lending portfolio overview</p>
+        <h1 className="text-3xl font-bold tracking-tight">Lender Dashboard</h1>
+        <p className="text-muted-foreground">Search and evaluate traders before lending</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Lent</CardTitle>
-              <CurrencyDollar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${profile.total_lent.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">across all loans</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search Traders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSearch} className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Search by name, phone, or market..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="flex-1 rounded-lg border px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {loading ? "Searching..." : "Search"}
+            </button>
+          </form>
+        </CardContent>
+      </Card>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activeLoans.length}</div>
-              <p className="text-xs text-muted-foreground">currently outstanding</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Default Rate</CardTitle>
-              <TrendUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{profile.default_rate}%</div>
-              <p className="text-xs text-muted-foreground">{defaultedLoans.length} defaulted loans</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Loan Size</CardTitle>
-              <Warning className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${profile.avg_loan_size.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">per transaction</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Results */}
+      {recentSearches.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Latest lending activity</CardDescription>
+            <CardTitle>Results ({recentSearches.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {transactions.slice(0, 5).map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+            <div className="space-y-4">
+              {recentSearches.map((trader) => (
+                <div key={trader.id} className="flex items-center justify-between rounded-lg border p-4">
                   <div>
-                    <p className="text-sm font-medium">{tx.trader_name}</p>
-                    <p className="text-xs text-muted-foreground">{tx.created_at}</p>
+                    <p className="font-medium">Trader #{trader.id}</p>
+                    <p className="text-sm text-muted-foreground">{trader.market_name} · {trader.state}</p>
+                    <p className="text-sm text-muted-foreground">{trader.phone_number}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">${tx.amount.toLocaleString()}</p>
-                    <p className={`text-xs capitalize ${
-                      tx.status === "completed" ? "text-green-600" :
-                      tx.status === "pending" ? "text-yellow-600" :
-                      tx.status === "defaulted" ? "text-red-600" :
-                      "text-orange-600"
-                    }`}>
-                      {tx.status}
+                    <p className={`text-3xl font-bold ${scoreColor(trader.trust_score)}`}>
+                      {trader.trust_score}
                     </p>
+                    <p className="text-xs text-muted-foreground">out of 850</p>
+                    <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                      trader.trust_score >= 700 ? "bg-green-100 text-green-700" :
+                      trader.trust_score >= 550 ? "bg-yellow-100 text-yellow-700" :
+                      "bg-red-100 text-red-700"
+                    }`}>
+                      {scoreLabel(trader.trust_score)}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Traders</CardTitle>
-            <CardDescription>Highest trust scores in your portfolio</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {traders
-                .sort((a, b) => b.trust_score - a.trust_score)
-                .slice(0, 5)
-                .map((trader) => (
-                  <div key={trader.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                    <div>
-                      <p className="text-sm font-medium">{trader.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{trader.vouch_count} vouches</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">{trader.trust_score}</p>
-                      <p className="text-xs text-muted-foreground">trust score</p>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LoginPage } from "@/pages/LoginPage";
+import { SignupPage } from "@/pages/SignupPage";
 import { TraderDashboard } from "@/pages/trader/Dashboard";
 import { TraderTransactions } from "@/pages/trader/Transactions";
 import { TraderVouches } from "@/pages/trader/Vouches";
@@ -51,8 +52,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
-      
+
       {/* Trader Routes */}
       <Route path="/trader" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route index element={<TraderDashboard />} />

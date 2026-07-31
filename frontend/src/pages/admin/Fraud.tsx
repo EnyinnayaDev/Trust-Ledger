@@ -1,135 +1,90 @@
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import type { FraudFlag } from "@/lib/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Check, X } from "@phosphor-icons/react";
-import { motion } from "framer-motion";
+import { api, type FraudFlag } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
 export function AdminFraud() {
-  const [fraudFlags, setFraudFlags] = useState<FraudFlag[]>([]);
+  const [flags, setFlags] = useState<FraudFlag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
-    loadFraudFlags();
+    loadFlags();
   }, []);
 
-  const loadFraudFlags = async () => {
+  const loadFlags = async () => {
     try {
-      const flags = await api.getFraudFlags();
-      setFraudFlags(flags);
-    } catch (error) {
-      console.error("Failed to load fraud flags:", error);
+      const data = await api.getFraudFlags();
+      setFlags(data);
+    } catch (err) {
+      toast.error("Failed to load fraud flags");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: FraudFlag["status"]) => {
-    try {
-      await api.updateFraudFlag(id, status);
-      toast.success(`Fraud flag ${status}`);
-      loadFraudFlags();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update flag");
-    }
-  };
+  const open = flags.filter(f => !f.resolved);
+  const resolved = flags.filter(f => f.resolved);
 
-  const filtered = fraudFlags.filter(f =>
-    statusFilter === "all" || f.status === statusFilter
-  );
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-12">Loading...</div>;
-  }
+  if (loading) return <div className="flex items-center justify-center py-12">Loading...</div>;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Fraud Flags</h1>
-        <p className="text-muted-foreground">Review and manage fraud reports</p>
+        <p className="text-muted-foreground">
+          {open.length} open · {resolved.length} resolved
+        </p>
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>All Fraud Flags</CardTitle>
-              <CardDescription>{filtered.length} flags found</CardDescription>
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-                <SelectItem value="dismissed">Dismissed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
+        <CardHeader><CardTitle>Open Flags ({open.length})</CardTitle></CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {filtered.map((flag, i) => (
-              <motion.div
-                key={flag.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="rounded-lg border p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-5 w-5 text-red-600" weight="fill" />
-                      <h3 className="font-semibold">{flag.trader_name}</h3>
-                      <Badge
-                        variant={
-                          flag.status === "resolved" ? "default" :
-                          flag.status === "pending" ? "secondary" :
-                          "outline"
-                        }
-                      >
-                        {flag.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">{flag.reason}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Reported by: {flag.reported_by} • {flag.created_at}
-                    </p>
+          {open.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-6">No open flags.</p>
+          ) : (
+            <div className="space-y-3">
+              {open.map((flag) => (
+                <div key={flag.id} className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-red-800">Trader #{flag.trader}</p>
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      Open
+                    </span>
                   </div>
-                  {flag.status === "pending" && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdateStatus(flag.id, "resolved")}
-                        className="gap-1"
-                      >
-                        <Check className="h-4 w-4" />
-                        Resolve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdateStatus(flag.id, "dismissed")}
-                        className="gap-1"
-                      >
-                        <X className="h-4 w-4" />
-                        Dismiss
-                      </Button>
-                    </div>
-                  )}
+                  <p className="mt-1 text-sm text-red-700">{flag.reason}</p>
+                  <p className="mt-1 text-xs text-red-500">
+                    Flagged {new Date(flag.flagged_at).toLocaleDateString()}
+                  </p>
                 </div>
-              </motion.div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Resolved Flags ({resolved.length})</CardTitle></CardHeader>
+        <CardContent>
+          {resolved.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground py-6">No resolved flags.</p>
+          ) : (
+            <div className="space-y-3">
+              {resolved.map((flag) => (
+                <div key={flag.id} className="rounded-lg border p-4 opacity-60">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">Trader #{flag.trader}</p>
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      Resolved
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{flag.reason}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Flagged {new Date(flag.flagged_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

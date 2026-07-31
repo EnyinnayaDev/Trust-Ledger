@@ -1,16 +1,20 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import type { User, Role } from "@/lib/types";
-import { api, isMockMode, setMockMode } from "@/lib/api";
-import { mockUsers } from "@/lib/mock-data";
+import { api, clearToken, getToken } from "@/lib/api";
+import type { TraderProfile, Lender } from "@/lib/api";
+
+export type Role = "trader" | "lender" | "admin";
+
+export interface User {
+  id: number;
+  username: string;
+  role: Role;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, role: Role) => Promise<void>;
   logout: () => void;
-  switchRole: (role: Role) => void;
-  mockMode: boolean;
-  toggleMockMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,22 +22,24 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mockMode, setMockModeState] = useState(isMockMode());
 
   useEffect(() => {
     const stored = localStorage.getItem("trustledger_user");
-    if (stored) {
+    const token = getToken();
+    if (stored && token) {
       setUser(JSON.parse(stored));
     }
     setLoading(false);
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, role: Role) => {
     setLoading(true);
     try {
-      const loggedInUser = await api.login(username, password);
-      setUser(loggedInUser);
-      localStorage.setItem("trustledger_user", JSON.stringify(loggedInUser));
+      await api.login(username, password);
+
+      const userData: User = { id: 0, username, role };
+      setUser(userData);
+      localStorage.setItem("trustledger_user", JSON.stringify(userData));
     } finally {
       setLoading(false);
     }
@@ -41,23 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    clearToken();
     localStorage.removeItem("trustledger_user");
-  };
-
-  const switchRole = (role: Role) => {
-    const newUser = mockUsers.find(u => u.role === role) || mockUsers[0];
-    setUser(newUser);
-    localStorage.setItem("trustledger_user", JSON.stringify(newUser));
-  };
-
-  const toggleMockMode = () => {
-    const newMode = !mockMode;
-    setMockMode(newMode);
-    setMockModeState(newMode);
+    localStorage.removeItem("trustledger_refresh_token");
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, switchRole, mockMode, toggleMockMode }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
