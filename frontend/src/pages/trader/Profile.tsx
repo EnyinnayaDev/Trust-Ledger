@@ -96,7 +96,7 @@ export function TraderProfile() {
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <p className="text-sm">{user?.email}</p>
+              <p className="text-sm">{user?.username}</p>
             </div>
             {editing && (
               <div className="flex gap-2 pt-2">
@@ -120,19 +120,14 @@ export function TraderProfile() {
               <span className="text-2xl font-bold">{profile.trust_score}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Vouches</span>
-              <span className="text-lg font-semibold">{profile.vouch_count}</span>
+              <span className="text-sm text-muted-foreground">Market Name</span>
+              <span className="text-lg font-semibold">{profile.market_name}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Transactions</span>
-              <span className="text-lg font-semibold">{profile.total_transactions}</span>
+              <span className="text-lg font-semibold">{profile.score_breakdown}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Success Rate</span>
-              <span className="text-lg font-semibold">
-                {Math.round((profile.successful_loans / (profile.successful_loans + profile.defaulted_loans)) * 100)}%
-              </span>
-            </div>
+            
           </CardContent>
         </Card>
       </div>
