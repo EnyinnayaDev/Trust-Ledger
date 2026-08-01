@@ -32,12 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = async (username: string, password: string, role: Role) => {
+ const login = async (username: string, password: string, role: Role) => {
     setLoading(true);
     try {
-      await api.login(username, password);
-
-      const userData: User = { id: 0, username, role };
+      const result = await api.login(username, password, role);
+      const userData: User = { id: 0, username: result.username, role };
       setUser(userData);
       localStorage.setItem("trustledger_user", JSON.stringify(userData));
     } finally {

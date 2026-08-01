@@ -81,17 +81,20 @@ export const api = {
   getLenders: () => apiCall<Lender[]>("/lenders/"),
   getLoanOutcomes: () => apiCall<LoanOutcome[]>("/loan-outcomes/"),
   // Auth
-  login: async (username: string, password: string) => {
-    const data = await apiCall<{ access: string; refresh: string }>("/token/", {
+  login: async (username: string, password: string, role: "trader" | "lender" | "admin") => {
+    const res = await fetch(`${API_BASE}/token/`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
+    if (!res.ok) throw new Error("Invalid username or password");
+    const data = await res.json();
     setToken(data.access);
     localStorage.setItem("trustledger_refresh_token", data.refresh);
-    return data;
+    return { username, role };
   },
 
-  signup: (payload: {
+  signup: (data: {
     username: string;
     email: string;
     password: string;
@@ -101,9 +104,9 @@ export const api = {
     state?: string;
     institution_name?: string;
   }) =>
-    apiCall<{ message: string }>("/auth/signup/", {
+    apiCall<{ message: string }>("/auth/signup", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(data),
     }),
 
   // Trader
