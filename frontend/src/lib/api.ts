@@ -130,12 +130,11 @@ export const api = {
 
   // Vouches
   getMyNetwork: () => apiCall<VouchNetwork>("/vouches/my_network/"),
-  createVouch: (vouchee: number) =>
+  createVouch: (vouchee_phone: string) =>
     apiCall<Vouch>("/vouches/", {
       method: "POST",
-      body: JSON.stringify({ vouchee }),
-    }),
-
+      body: JSON.stringify({ vouchee_phone }),
+    }),  
   // Loan outcomes
   reportLoanOutcome: (data: {
     trader: number;

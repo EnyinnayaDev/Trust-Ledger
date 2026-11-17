@@ -10,7 +10,7 @@ export function TraderVouches() {
   const [network, setNetwork] = useState<VouchNetwork | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [voucheeId, setVoucheeId] = useState("");
+    const [voucheePhone, setVoucheePhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -32,10 +32,10 @@ export function TraderVouches() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.createVouch(parseInt(voucheeId));
+      await api.createVouch(voucheePhone.trim());
       toast.success("Vouch created successfully");
       setShowForm(false);
-      setVoucheeId("");
+      setVoucheePhone("");
       loadNetwork();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create vouch");
@@ -66,13 +66,13 @@ export function TraderVouches() {
           <CardContent>
             <form onSubmit={handleVouch} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="voucheeId">Trader ID</Label>
+                <Label htmlFor="voucheePhone">Trader Phone Number</Label>
                 <Input
-                  id="voucheeId"
-                  type="number"
-                  placeholder="Enter the trader's ID"
-                  value={voucheeId}
-                  onChange={(e) => setVoucheeId(e.target.value)}
+                  id="voucheePhone"
+                  type="text"
+                  placeholder="Enter the trader's phone number"
+                  value={voucheePhone}
+                  onChange={(e) => setVoucheePhone(e.target.value)}
                   required
                 />
                 <p className="text-xs text-muted-foreground">

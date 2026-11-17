@@ -25,12 +25,23 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class VouchSerializer(serializers.ModelSerializer):
+    vouchee_phone = serializers.CharField(write_only=True, required=False)
+    vouchee = serializers.PrimaryKeyRelatedField(queryset=Trader.objects.all(), required=False)
+
     class Meta:
         model = Vouch
-        fields = ['id', 'voucher', 'vouchee', 'created_at']
+        fields = ['id', 'voucher', 'vouchee', 'vouchee_phone', 'created_at']
         read_only_fields = ['voucher', 'created_at']
-        
+
     def validate(self, data):
+        phone = data.pop('vouchee_phone', None)
+        if phone:
+            try:
+                data['vouchee'] = Trader.objects.get(phone_number=phone.strip())
+            except Trader.DoesNotExist:
+                raise serializers.ValidationError({"vouchee_phone": "No trader found with that phone number."})
+        if not data.get('vouchee'):
+            raise serializers.ValidationError("Provide vouchee_phone.")
         return data
 
 
