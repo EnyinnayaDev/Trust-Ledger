@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions
 from .models import Trader, Lender, Transaction, Vouch, LoanOutcome, FraudFlag
 from .scoring import calculate_trust_score
@@ -78,7 +79,7 @@ class TraderViewSet(viewsets.ModelViewSet):
         data['score_breakdown'] = breakdown
         return Response(data)
 
-class LenderViewSet(viewsets.ModelViewSet):
+class LenderViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Lender.objects.all()
     serializer_class = LenderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -111,7 +112,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
-        trader = Trader.objects.get(user=self.request.user)
+        trader = get_object_or_404(Trader, user=self.request.user)
         serializer.save(trader=trader)
 
 
@@ -131,10 +132,12 @@ class VouchViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
-        voucher = Trader.objects.get(user=self.request.user)
+        voucher = get_object_or_404(Trader, user=self.request.user)
         vouchee = serializer.validated_data['vouchee']
         if voucher == vouchee:
             raise serializers.ValidationError("A trader cannot vouch for themselves.")
+        if Vouch.objects.filter(voucher=voucher, vouchee=vouchee).exists():
+            raise serializers.ValidationError("You have already vouched for this trader.")
         serializer.save(voucher=voucher)
 
     @action(detail=False, methods=['get'])
@@ -183,7 +186,7 @@ class LoanOutcomeViewSet(viewsets.ModelViewSet):
 class FraudFlagViewSet(viewsets.ModelViewSet):
     queryset = FraudFlag.objects.all()
     serializer_class = FraudFlagSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
 
 
 class SignupView(APIView):

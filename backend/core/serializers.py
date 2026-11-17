@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Trader, Lender, Transaction, Vouch, LoanOutcome, FraudFlag
 from django.contrib.auth.models import User
+from django.db import transaction
 
 class TraderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -67,6 +68,11 @@ class UserSignupSerializer(serializers.ModelSerializer):
             'phone_number', 'market_name', 'state',
             'institution_name'
         ]
+        
+    def validate_phone_number(self, value):
+        if Trader.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("A trader with this phone number already exists.")
+        return value
 
     def validate(self, data):
         role = data.get('role')
@@ -82,6 +88,7 @@ class UserSignupSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("institution_name is required for lenders.")
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
         role = validated_data.pop('role')
         phone_number = validated_data.pop('phone_number', None)
