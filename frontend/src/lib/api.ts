@@ -104,7 +104,7 @@ export const api = {
     state?: string;
     institution_name?: string;
   }) =>
-    apiCall<{ message: string }>("/auth/signup", {
+    apiCall<{ message: string }>("/auth/signup/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
