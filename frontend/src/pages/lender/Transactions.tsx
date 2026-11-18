@@ -32,8 +32,8 @@ export function LenderTransactions() {
   const filtered = transactions.filter(tx => {
     const term = search.toLowerCase();
     const matchesSearch =
-      String(tx.trader).includes(term) ||
-      String(tx.lender).includes(term) ||
+      tx.trader_name.toLowerCase().includes(term) ||
+      tx.lender_name.toLowerCase().includes(term) ||
       tx.outcome.toLowerCase().includes(term);
     const matchesStatus = statusFilter === "all" || tx.outcome === statusFilter;
     return matchesSearch && matchesStatus;
@@ -60,7 +60,7 @@ export function LenderTransactions() {
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by trader id, lender id, or outcome..."
+                placeholder="Search by trader, lender, or outcome..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -90,14 +90,14 @@ export function LenderTransactions() {
                 className="flex items-center justify-between rounded-lg border p-4"
               >
                 <div className="flex-1">
-                  <p className="font-medium">Trader #{tx.trader}</p>
+                  <p className="font-medium">{tx.trader_name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Lender #{tx.lender} • Reported: {tx.reported_at}
+                    {tx.lender_name} • Reported: {new Date(tx.reported_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="font-semibold">${Number(tx.amount).toLocaleString()}</p>
+                    <p className="font-semibold">₦{Number(tx.amount).toLocaleString()}</p>
                   </div>
                   <Badge
                     variant={

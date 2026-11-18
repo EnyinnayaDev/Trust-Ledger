@@ -203,6 +203,8 @@ export interface Vouch {
   id: number;
   voucher: number;
   vouchee: number;
+  vouchee_name: string;
+  voucher_name: string;
   created_at: string;
 }
 
@@ -222,7 +224,9 @@ export interface Lender {
 export interface LoanOutcome {
   id: number;
   trader: number;
+  trader_name: string;
   lender: number;
+  lender_name: string;
   amount: string;
   outcome: "repaid" | "defaulted" | "late";
   reported_at: string;

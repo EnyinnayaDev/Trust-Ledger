@@ -27,10 +27,13 @@ class TransactionSerializer(serializers.ModelSerializer):
 class VouchSerializer(serializers.ModelSerializer):
     vouchee_phone = serializers.CharField(write_only=True, required=False)
     vouchee = serializers.PrimaryKeyRelatedField(queryset=Trader.objects.all(), required=False)
+    voucher_name = serializers.CharField(source='voucher.user.username', read_only=True)
+    vouchee_name = serializers.CharField(source='vouchee.user.username', read_only=True)
+
 
     class Meta:
         model = Vouch
-        fields = ['id', 'voucher', 'vouchee', 'vouchee_phone', 'created_at']
+        fields = ['id', 'voucher', 'vouchee', 'vouchee_phone', 'voucher_name', 'vouchee_name', 'created_at']
         read_only_fields = ['voucher', 'created_at']
 
     def validate(self, data):
@@ -46,9 +49,13 @@ class VouchSerializer(serializers.ModelSerializer):
 
 
 class LoanOutcomeSerializer(serializers.ModelSerializer):
+    trader_name = serializers.CharField(source='trader.user.username', read_only=True)
+    lender_name = serializers.CharField(source='lender.institution_name', read_only=True)
+
     class Meta:
         model = LoanOutcome
-        fields = ['id', 'trader', 'lender', 'amount', 'outcome', 'reported_at']
+        fields = ['id', 'trader', 'trader_name', 'lender', 'lender_name',
+                  'amount', 'outcome', 'reported_at']
         read_only_fields = ['lender', 'reported_at']
 
 

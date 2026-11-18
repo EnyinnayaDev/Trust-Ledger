@@ -102,7 +102,7 @@ export function TraderVouches() {
                 {network?.vouches_received.map((v) => (
                   <div key={v.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                     <div>
-                      <p className="text-sm font-medium">Trader #{v.voucher}</p>
+                      <p className="text-sm font-medium">Trader #{v.voucher_name}</p>
                       <p className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</p>
                     </div>
                     <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
@@ -129,7 +129,7 @@ export function TraderVouches() {
                 {network?.vouches_given.map((v) => (
                   <div key={v.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                     <div>
-                      <p className="text-sm font-medium">Trader #{v.vouchee}</p>
+                      <p className="text-sm font-medium">Trader #{v.vouchee_name}</p>
                       <p className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</p>
                     </div>
                     <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
